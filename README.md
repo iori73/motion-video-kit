@@ -50,8 +50,9 @@ compiled tree + tracks ──┬─ engine/html/*    runtime.js が seek(t) で�
 - Figma Motion は3D遠近と音声を持たないため、Figma 版は平面の位置移動で近似する。MP4 側にも3Dはない。
 - Figma MCP は呼び出し数に上限がある（プランによる）。チャンクを少なくまとめてある。
 - 書体は `tokens.fonts` の `css`（HTML）と `figma`（Figma）を別々に持つ。見た目は完全には一致しない。
-- 動きの型は2本の見本で使ったものに限る。3本目の業種で必要になったら足す。
+- 動きの型は、見本3本と、調べた他社の動画(`docs/learnings.md`)で見えたものに限る。必要になったら足す(2件以上で見えたものだけ)。
 
 ## ライセンス / License
 
-未設定（All rights reserved）。
+MIT（`LICENSE`）。コードも `examples/` も自作です。他社の動画から学んだことは数字と型だけで、映像・台本・人物・ロゴは含みません（`docs/analysis-method.md`）。
+MIT. Code and examples are original; nothing from third-party videos is included.
