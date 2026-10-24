@@ -32,6 +32,7 @@
 | `counter` | `from,at,dur,steps,to,decimals,suffix,font,size,y,h`、`ease:'cubic'`（既定は4乗。`'cubic'` は Figma の EASE_OUT と同じ曲線で、棒グラフと同期させるときに使う） |
 | `flicker` | `at`、`step`（既定 0.15秒）、`until`（最後の項目を残す時刻）、`items:[element...]`。項目を hard cut で順に出す（Wolff Olins のバースト） |
 | `wipeBars` | `at`、`bars`（既定6）、`cover`、`out`、`hold`、`stagger`、`color`。縦帯が降りて、抜ける（zypsy・Landor） |
+| `typeOn` | `text`、`at`、`cps`（字/秒、既定8）、`x,y`（左揃え）、`size`、`font`、`color`、`caret`（既定 true）、`caretColor`、`h`。文字を1字ずつ打ち込む。1字ごとの状態を重ね、hard edge で切り替える（Collins・Saffron）。Figma では状態ごとの別レイヤーになる（1つの文字列としては編集できない） |
 | `logoReveal` | `cx,cy,at,word,size,color,markSize,markFill,shape`。形が回って現れ、ワードマークが伸びる（thebranx・zypsy・Landor） |
 | `caption` | `text`、`by`（下端の位置）。見える時間は `motion:[{preset:'window',...}]` |
 | `path` | `points:[[x,y]...]`、`tangents:[[tsx,tsy,tex,tey]...]`（区間ごと）、`color`、`weight`、`x,y` |

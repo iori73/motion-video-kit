@@ -5,7 +5,7 @@
 Write one scene spec; get a motion-blurred MP4 and an editable Figma Motion version from the same keyframes.
 
 - 題材を問わない（UIの説明動画、文芸の予告、数字の見せ方など）。動きの型は `docs/spec.md`。
-- 見本は3本: `examples/kurumi`（横16:9・45秒・架空のパン卸サービス）、`examples/podcast-teaser`（縦9:16・15秒・文芸の予告）、`examples/brand-reel`（横16:9・12秒・架空のスタジオのリール。他社の動画から学んだ技法を使った）。素材はすべて自作か著作権切れ。
+- 見本は4本: `examples/kurumi`（横16:9・45秒・架空のパン卸サービス）、`examples/podcast-teaser`（縦9:16・15秒・文芸の予告）、`examples/brand-reel`（横16:9・12秒・架空のスタジオのリール。他社の動画から学んだ技法を使った）、`examples/type-on`（横16:9・4秒・1字ずつ打ち込む `typeOn` の確認用）。素材はすべて自作か著作権切れ。
 - 参考動画があっても**技法の分析だけ**。映像・台本・人物は複製しない（`docs/analysis-method.md`）。他社の動画から測った学びは `docs/learnings.md`。
 
 ## 使い方 / Quick start
@@ -50,7 +50,7 @@ compiled tree + tracks ──┬─ engine/html/*    runtime.js が seek(t) で�
 - Figma Motion は3D遠近と音声を持たないため、Figma 版は平面の位置移動で近似する。MP4 側にも3Dはない。
 - Figma MCP は呼び出し数に上限がある（プランによる）。チャンクを少なくまとめてある。
 - 書体は `tokens.fonts` の `css`（HTML）と `figma`（Figma）を別々に持つ。見た目は完全には一致しない。
-- 動きの型は、見本3本と、調べた他社の動画(`docs/learnings.md`)で見えたものに限る。必要になったら足す(2件以上で見えたものだけ)。
+- 動きの型は、見本4本と、調べた他社の動画(`docs/learnings.md`)で見えたものに限る。必要になったら足す(2件以上で見えたものだけ)。
 
 ## ライセンス / License
 

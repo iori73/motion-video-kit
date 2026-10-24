@@ -306,7 +306,28 @@ export function compile(spec) {
     return f;
   };
 
-  const BUILD = {text, frame, shape: rect, rect, path, card, caption, counter, clock, table, flicker, wipeBars, logoReveal};
+  // typeOn: text typed one character at a time (Collins wordmark ~0.17 s/char; Saffron search field ~0.1-0.13 s/char).
+  // Same trick as `counter`: one text state per prefix, each shown until the next appears (hard edges), so both renderers get it.
+  // Left aligned at x/y (a centred prefix would shift as it grows). The last state stays; `caret` draws a bar after the last typed char.
+  const typeOn = o => {
+    const g = frame({name: o.name || 'Type on', w: meta.w, h: o.h || 200, x: 0, y: 0});
+    const chars = [...o.text], step = 1 / (o.cps ?? 8), caret = o.caret !== false;
+    const base = {font: o.font, weight: o.weight, size: o.size || 60, color: o.color, ls: o.ls, x: o.x ?? 0, y: o.y ?? 0};
+    const ts = k => o.at + k * step + (o.startDelay ?? 0);
+    for (let k = 1; k <= chars.length; k++) {
+      const runs = [{t: chars.slice(0, k).join('')}];
+      if (caret) runs.push({t: '|', color: o.caretColor || o.color || '$ink'});
+      const t = text({...base, name: `Typed ${k}/${chars.length}`, runs});
+      const keys = k === 1 ? [[ts(1), 1]] : [[ts(k) - 0.01, 0], [ts(k), 1]];
+      if (k < chars.length) keys.push([ts(k + 1) - 0.01, 1], [ts(k + 1), 0]);
+      if (k === 1 && ts(1) > 0.011) keys.unshift([0, 0], [ts(1) - 0.01, 0]);
+      addTrack(t, 'OPACITY', keys);
+      g.children.push(t);
+    }
+    return g;
+  };
+
+  const BUILD = {text, frame, shape: rect, rect, path, card, caption, counter, clock, table, flicker, wipeBars, logoReveal, typeOn};
   function expand(o) {
     const b = BUILD[o.type];
     if (!b) throw new Error(`Unknown element type: ${o.type}`);

@@ -20,7 +20,9 @@ for (const name of names) {
   const wins = prof.fineWindows.map(w => `between(n\\,${Math.floor(w.from * prof.fps)}\\,${Math.ceil(w.to * prof.fps)})`);
   const sel = ['not(mod(n\\,' + K + '))', ...wins].join('+');
   const vf = `select='${sel}',showinfo,scale=1280:-2`;
-  const r = spawnSync('ffmpeg', ['-hide_banner', '-i', resolve(root, 'videos', name + '.mp4'), '-an', '-vf', vf, '-fps_mode', 'passthrough', '-q:v', '3', resolve(out, 'screenshot_%04d.jpg')], {encoding: 'utf8', maxBuffer: 1 << 28});
+  const src = ['.mp4', '.webm', '.mov'].map(e => resolve(root, 'videos', name + e)).find(existsSync);
+  if (!src) { console.error(`FAILED ${name}: no videos/${name}.(mp4|webm|mov)`); process.exit(1); }
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-i', src,'-an', '-vf', vf, '-fps_mode', 'passthrough', '-q:v', '3', resolve(out, 'screenshot_%04d.jpg')], {encoding: 'utf8', maxBuffer: 1 << 28});
   if (r.status !== 0) { console.error(`FAILED ${name}: ${r.stderr.split('\n').slice(-4).join(' | ')}`); process.exit(1); }
   const rows = ['index\ttime_s'];
   let idx = 0;
