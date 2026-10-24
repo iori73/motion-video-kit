@@ -38,8 +38,9 @@ function addTrack(n, field, keys) {
 
 // ---- motion presets (macros that expand to tracks) ----
 const PRESETS = {
+  // Defaults follow measured references: median motion run 0.37 s (zypsy), 0.6 s (Landor), 0.4-0.63 s (thebranx).
   enterTiltBlur(n, m) {
-    const {at, dur = 0.85, dy = 0, dx = 0, rot = 0, blur = 0, fade = 0.6, ease = 'EASE_OUT'} = m;
+    const {at, dur = 0.55, dy = 0, dx = 0, rot = 0, blur = 0, fade = 0.6, ease = 'EASE_OUT'} = m;
     if (dy) addTrack(n, 'TRANSLATION_Y', [[at, dy], [at + dur, 0, ease]]);
     if (dx) addTrack(n, 'TRANSLATION_X', [[at, dx], [at + dur, 0, ease]]);
     if (rot) addTrack(n, 'ROTATION', [[at, rot], [at + dur, 0, 'EASE_OUT']]);
@@ -47,7 +48,7 @@ const PRESETS = {
     if (blur) addTrack(n, 'BLUR', [[at, blur], [at + dur, 0, 'EASE_OUT']]);
   },
   fadeUp(n, m) {
-    const {at, dur = 0.6, dy = 30} = m;
+    const {at, dur = 0.45, dy = 30} = m;
     addTrack(n, 'TRANSLATION_Y', [[at, dy], [at + dur, 0, 'EASE_OUT']]);
     addTrack(n, 'OPACITY', [[at, 0], [at + dur, 1, 'EASE_OUT']]);
   },
@@ -64,6 +65,19 @@ const PRESETS = {
     for (const f of ['SCALE_X', 'SCALE_Y']) addTrack(n, f, [[at, from], [at + dur, to, ease]]);
   },
   draw(n, m) { addTrack(n, 'PATH_TRIM_END', [[m.at, 0], [m.at + (m.dur ?? 0.8), 1, 'EASE_OUT']]); },
+  // Move by (fromX,fromY) -> (toX,toY), additive on the rest position. A "push" transition is two slides in the same window:
+  // outgoing shot toY = -height, incoming shot fromY = +height (zypsy column/roll cuts, thebranx roll cut: 0.2-0.3 s).
+  slide(n, m) {
+    const {at, dur = 0.25, fromX = 0, fromY = 0, toX = 0, toY = 0, ease = 'EASE_IN_AND_OUT'} = m;
+    if (fromX !== toX) addTrack(n, 'TRANSLATION_X', [[at, fromX], [at + dur, toX, ease]]);
+    if (fromY !== toY) addTrack(n, 'TRANSLATION_Y', [[at, fromY], [at + dur, toY, ease]]);
+  },
+  // Scale up through the element (zypsy: a headline grows ~10x in 0.17 s and one letter fills the frame), then it disappears.
+  zoomThrough(n, m) {
+    const {at, dur = 0.2, to = 10} = m;
+    for (const f of ['SCALE_X', 'SCALE_Y']) addTrack(n, f, [[at, 1], [at + dur, to, 'EASE_IN']]);
+    addTrack(n, 'OPACITY', [[at + dur, 1], [at + dur + 0.01, 0]]);
+  },
   // cards that sit in a pile, then spread to their rest (list) positions
   pileToList(n, m) {
     const {enterAt, enterDur = 0.7, holdUntil, spreadDur = 1.2, dx, dy, rot = 0, slide = 220, blur = 8} = m;
@@ -162,7 +176,8 @@ export function compile(spec) {
     // Text states stacked on top of each other; each is visible for one step (HOLD-like with 0.01s edges).
     const g = frame({name: o.name || 'Counter', w: meta.w, h: o.h || 400, x: 0, y: o.y ?? 0});
     const steps = o.steps || 8, a = o.at, d = o.dur;
-    const ease = x => 1 - Math.pow(1 - x, 4);
+    // 'cubic' matches Figma's EASE_OUT, so a counter and a bar animated with EASE_OUT stay locked together (Landor stat scene).
+    const ease = o.ease === 'cubic' ? (x => 1 - Math.pow(1 - x, 3)) : (x => 1 - Math.pow(1 - x, 4));
     const states = [];
     for (let k = 0; k <= steps; k++) states.push({t: k === 0 ? (o.from ?? a) : a + (k / steps) * d, v: (o.to * ease(k / steps)).toFixed(o.decimals ?? 1)});
     states.forEach((s, k) => {
@@ -245,7 +260,53 @@ export function compile(spec) {
     return f;
   };
 
-  const BUILD = {text, frame, shape: rect, rect, path, card, caption, counter, clock, table};
+  // ---- macros learned from reference videos (each expands to the primitives above, so both renderers get it) ----
+  // flicker: a row of full-frame items cut hard, one every `step` seconds (Wolff Olins ~0.13 s bursts; thebranx ~0.2 s swaps).
+  // Visible only in [t0, t1) with instant edges. Never emits two keyframes at the same time (a start at 0 begins at value 1).
+  const hardWindow = (t0, t1) => { const k = []; if (t0 > 0.011) k.push([0, 0], [t0 - 0.01, 0], [t0, 1]); else k.push([0, 1]); k.push([t1 - 0.01, 1], [t1, 0]); return k; };
+  const flicker = o => {
+    const g = frame({name: o.name || 'Flicker burst', w: meta.w, h: meta.h, x: 0, y: 0});
+    const step = o.step ?? 0.15, until = o.until;
+    g.shots = [];
+    (o.items || []).forEach((it, i) => {
+      const t0 = o.at + i * step, t1 = (i === o.items.length - 1 && until) ? until : t0 + step;
+      const n = expand(it);
+      addTrack(n, 'OPACITY', hardWindow(t0, t1));
+      g.children.push(n);
+      g.shots.push({start: t0, end: t1});
+    });
+    return g;
+  };
+  // wipeBars: N vertical bars drop in and out across the frame (zypsy column wipes, Landor shape wipes). Covers the cut at `at + cover`.
+  const wipeBars = o => {
+    const g = frame({name: o.name || 'Wipe bars', w: meta.w, h: meta.h, x: 0, y: 0});
+    const N = o.bars ?? 6, cover = o.cover ?? 0.25, out = o.out ?? 0.25, stag = o.stagger ?? 0.03, bw = Math.ceil(meta.w / N) + 2;
+    for (let i = 0; i < N; i++) {
+      const b = rect({name: `Bar ${i + 1}`, w: bw, h: meta.h, x: i * (meta.w / N), y: 0, fill: o.color || '$dark'});
+      const a = o.at + i * stag, mid = a + cover, end = mid + (o.hold ?? 0) + out;
+      addTrack(b, 'TRANSLATION_Y', [[a, -meta.h], [mid, 0, 'EASE_IN_AND_OUT'], [mid + (o.hold ?? 0), 0], [end, meta.h, 'EASE_IN_AND_OUT']]);
+      addTrack(b, 'OPACITY', [[0, 0], [Math.max(0.011, a - 0.01), 0], [a, 1], [end, 1], [end + 0.01, 0]]);
+      g.children.push(b);
+    }
+    return g;
+  };
+  // logoReveal: a simple mark pops in (scale + turn), then the wordmark slides out of it (thebranx, zypsy, Landor end cards).
+  const logoReveal = o => {
+    const S = o.markSize ?? 110;
+    const f = frame({name: o.name || 'Logo reveal', layout: 'h', gap: o.gap ?? 28, align: 'center', sizeW: 'hug', cx: o.cx, cy: o.cy});
+    const mark = rect({shape: o.shape || 'rect', name: 'Logo mark', w: S, h: S, radius: o.shape === 'ellipse' ? 0 : (o.markRadius ?? S * 0.27), fill: o.markFill || '$teal'});
+    const word = text({name: 'Wordmark', text: o.word, font: o.font || 'serif', size: o.size || 150, color: o.color || '#F0EEE6'});
+    const t = o.at;
+    for (const fl of ['SCALE_X', 'SCALE_Y']) addTrack(mark, fl, [[t, 0.2], [t + 0.45, 1, 'EASE_OUT_BACK']]);
+    addTrack(mark, 'ROTATION', [[t, -90], [t + 0.45, 0, 'EASE_OUT']]);
+    addTrack(mark, 'OPACITY', [[t, 0], [t + 0.15, 1]]);
+    addTrack(word, 'TRANSLATION_X', [[t + 0.3, -60], [t + 0.8, 0, 'EASE_OUT']]);
+    addTrack(word, 'OPACITY', [[t + 0.3, 0], [t + 0.7, 1, 'EASE_OUT']]);
+    f.children.push(mark, word);
+    return f;
+  };
+
+  const BUILD = {text, frame, shape: rect, rect, path, card, caption, counter, clock, table, flicker, wipeBars, logoReveal};
   function expand(o) {
     const b = BUILD[o.type];
     if (!b) throw new Error(`Unknown element type: ${o.type}`);
@@ -263,7 +324,21 @@ export function compile(spec) {
     applyMotion(root, s.motion);
     if (s.fade !== false) {
       if (s.fade === 'in') addTrack(root, 'OPACITY', [[s.start, 0], [s.start + 0.1, 1]]);
+      else if (s.fade === 'hard') addTrack(root, 'OPACITY', hardWindow(s.start, s.end));   // hard cut in and out (no dissolve)
       else addTrack(root, 'OPACITY', [[s.start, 0], [s.start + 0.1, 1], [s.end - 0.08, 1], [s.end, 0]]);
+    }
+    return root;
+  });
+  // layers: persistent layers that stay while the shots under them change (thebranx decoration, Wolff Olins label/object, zypsy chips).
+  // They are built like scenes, sit on top, and appear/disappear with hard edges unless `fade` says otherwise.
+  const layers = (spec.layers || []).map(s => {
+    const root = frame({name: s.name || s.id, w: meta.w, h: meta.h, x: 0, y: 0, fill: s.bg ? s.bg : null});
+    root.scene = {id: s.id, start: s.start, end: s.end, layer: true};
+    for (const c of s.children || []) root.children.push(expand(c));
+    applyMotion(root, s.motion);
+    if (s.fade !== false) {
+      if (s.fade === 'soft') addTrack(root, 'OPACITY', [[s.start, 0], [s.start + 0.15, 1], [s.end - 0.15, 1], [s.end, 0]]);
+      else addTrack(root, 'OPACITY', hardWindow(s.start, s.end));
     }
     return root;
   });
@@ -275,7 +350,7 @@ export function compile(spec) {
       .forEach(([x, y, w, h, c, op], i) => paper.children.push(rect({shape: 'ellipse', name: `Mottle ${i + 1}`, w, h, x: x - w / 2, y: y - h / 2, fill: {color: c, opacity: op}, blur: 140})));
     main.children.push(paper);
   }
-  main.children.push(...scenes);
+  main.children.push(...scenes, ...layers);
 
   const fontSet = new Set();
   (function walk(n) {

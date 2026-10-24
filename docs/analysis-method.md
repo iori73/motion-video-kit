@@ -12,6 +12,18 @@
 - 映像・台本・人物・ロゴの複製、または「少し変えただけ」の再現。
 - 抽出したフレームを公開リポジトリに入れる（第三者の映像）。
 
+## ツール(`tools/study/`、決定論・目視の前に測る)
+| 手順 | コマンド | 出力 |
+|---|---|---|
+| 動きの速さを測り、抽出間隔を決める | `node tools/study/motion-profile.mjs <video> <outDir>`(複数本は `profile-all.mjs <root> <video...>`) | `profile.json`(カット時刻・動きの長さ・間隔・細かくする区間) |
+| 決めた間隔でフレームを抜く(JPEG・幅1280・空き8GB未満なら停止) | `node tools/study/extract.mjs <root> <name...>` | `screenshots/<name>/screenshot_%04d.jpg` と `frames.tsv`(番号→時刻) |
+| 音と絵のカットの関係を測る | `node tools/study/audio-sync.mjs <video> <profile.json>` | オンセットへの一致率、拍の格子への位相(R と p) |
+| エンジンの変更で見た目が変わっていないか | `node tools/compare-snaps.mjs <dirA> <dirB>` | 画像ごとの PSNR(`inf` = 同一) |
+- 間隔の規則: 動きの最短が 0.3秒未満 → その区間だけ原fps、通常 0.1秒、全部が 1秒以上 → 0.2秒。**ただしカットが密(場面長 0.6秒未満)なら 0.1秒**。
+- フォルダ構成: `<root>/videos/`(取得した動画)、`<root>/screenshots/`、`<root>/research/<name>/{profile.json,analysis.md}`。すべて**非公開・git 管理外**。取る前に出所・形式・サイズを確認し、公開・ログイン不要・DRMなしだけを取る。403 が返ったら回避しない。
+- 1本あたり画像を読むのは多くて8回(概観1 + 密な区間 + 文字の拡大)。
+- 結果の学びは `docs/learnings.md` に、数字と型だけで書く。
+
 ## 測り方
 1. **全フレームで見る**: 0.1秒刻みなら全部。2秒おきの間引きは約5%しか見ていない（過去にこの失敗をした）。
 2. **カット検出**（決定論）:

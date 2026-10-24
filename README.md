@@ -5,14 +5,15 @@
 Write one scene spec; get a motion-blurred MP4 and an editable Figma Motion version from the same keyframes.
 
 - 題材を問わない（UIの説明動画、文芸の予告、数字の見せ方など）。動きの型は `docs/spec.md`。
-- 見本は2本: `examples/kurumi`（横16:9・45秒・架空のパン卸サービス）と `examples/podcast-teaser`（縦9:16・15秒・文芸の予告）。素材はすべて自作か著作権切れ。
-- 参考動画があっても**技法の分析だけ**。映像・台本・人物は複製しない（`docs/analysis-method.md`）。
+- 見本は3本: `examples/kurumi`（横16:9・45秒・架空のパン卸サービス）、`examples/podcast-teaser`（縦9:16・15秒・文芸の予告）、`examples/brand-reel`（横16:9・12秒・架空のスタジオのリール。他社の動画から学んだ技法を使った）。素材はすべて自作か著作権切れ。
+- 参考動画があっても**技法の分析だけ**。映像・台本・人物は複製しない（`docs/analysis-method.md`）。他社の動画から測った学びは `docs/learnings.md`。
 
 ## 使い方 / Quick start
 
 ```bash
 npm install                                   # puppeteer-core。Google Chrome と ffmpeg が必要
 node engine/core/contrast.mjs examples/kurumi/spec.mjs        # 文字と背景のコントラスト検査（0件が合格）
+node engine/core/pacing.mjs  examples/brand-reel/spec.mjs     # ペース検査（場面長・動きの長さ。警告が無いのが合格）
 node engine/html/build-html.mjs examples/kurumi/spec.mjs out/kurumi.html
 node engine/html/snap.mjs out/kurumi.html out/snaps 3 9.2 21.5   # 指定秒の静止画で確認
 node engine/html/render.mjs out/kurumi.html out/frames           # 120fps相当のサブフレーム（--from/--to で部分書き出し）
