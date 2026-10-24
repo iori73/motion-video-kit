@@ -1,0 +1,17 @@
+{
+  "name": "motion-video-kit",
+  "version": "0.1.0",
+  "description": "Write one scene spec; get a motion-blurred MP4 (HTML + headless Chrome + ffmpeg) and an editable Figma Motion version.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build:html": "node engine/html/build-html.mjs",
+    "snap": "node engine/html/snap.mjs",
+    "render": "node engine/html/render.mjs",
+    "mp4": "node engine/html/build.mjs",
+    "figma": "node engine/figma/emit.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.16.0"
+  }
+}
